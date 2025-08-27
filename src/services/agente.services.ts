@@ -47,82 +47,78 @@ export class AgenteServices {
         }
     }
 
-    public async getEfectidadByAgenteId(agenteId: string): Promise<AgenteEfectividad | null> {
-        const query = `
-        MATCH (a:Agente {id: $agenteId})
-        OPTIONAL MATCH (a)<-[:REALIZADA_POR]-(i:Interaccion)
-        OPTIONAL MATCH (i)-[:GENERO_PROMESA]->(p:PromesaDePago)
-        OPTIONAL MATCH (i)-[:GENERO_PAGO]->(pago:Pago ) WHERE pago.es_completo = TRUE
+     public async getEfectidadByAgenteId(agenteId: string): Promise<AgenteEfectividad | null> {
+        // TODO: los pagos no tienen relación directa con el agente.
+        // La query simplificada trae todos los datos necesarios para realizar los cálculos en TypeScript.
+           const query = `
+            MATCH (a:Agente {id: $agenteId})
+            OPTIONAL MATCH (a)<-[:REALIZADA_POR]-(i:Interaccion)
+            OPTIONAL MATCH (a)<-[:REALIZADA_POR]-(i_pago:Interaccion) WHERE i_pago.resultado = 'pago_inmediato'
+            OPTIONAL MATCH (a)<-[:REALIZADA_POR]-(ir:Interaccion) WHERE  ir.resultado = 'renegociacion'
+ 
+            OPTIONAL MATCH (i)-[:GENERO_PROMESA]->(pp:PromesaDePago)
+            OPTIONAL MATCH (i)-[:GENERO_PAGO]->(p:Pago)
+            // Se realiza un segundo OPTIONAL MATCH para contar las promesas cumplidas.
+            // Esta ruta no interfiere con el cálculo del monto total.
+            OPTIONAL MATCH (i)-[:GENERO_PROMESA]->(pp_cumplida:PromesaDePago)<-[:CUMPLE_PROMESA]-(:Pago)
 
-        WITH a, i, p, pago
+            WITH a,
+                COUNT(DISTINCT i) as total_interacciones,
+                COUNT(DISTINCT pp) as promesas_generadas,
+                COUNT (DISTINCT i_pago) as pagos_inmediatos,
+                COUNT (DISTINCT ir) as renegociaciones,
+                COUNT(DISTINCT pp_cumplida) as promesas_cumplidas,
+                sum(p.monto) as monto_recuperado,
+                avg(i.duracion_segundos) as tiempo_promedio_llamada
+            
+            RETURN  
+                a.id as id,
+                a.nombre as nombre,  
+                a.departamento as departamento,
+                total_interacciones,
+                promesas_generadas,
+                promesas_cumplidas,
+                monto_recuperado,
+                tiempo_promedio_llamada,
+                pagos_inmediatos,
+                renegociaciones
+        `;
+
+        const data = await this.neo4jClient.runQuery(query, { agenteId });
+        const record = data[0];
+
+        // Validamos si se encontró algún registro para el agente
+        if (!record || !record.get("id")) {
+            return null;
+        }
+
+        // Se agrega el operador de encadenamiento opcional (?) y el operador de
+        // fusión de nulos (??) para manejar de forma segura los valores nulos que
+        // pueden retornar las agregaciones como sum() y avg() cuando no hay datos.
+        const totalInteracciones = record.get("total_interacciones")?.toNumber() ?? 0;
+        const promesasGeneradas = record.get("promesas_generadas")?.toNumber() ?? 0;
+        const promesasCumplidas = record.get("promesas_cumplidas")?.toNumber() ?? 0;
+        const montoRecuperado = record.get("monto_recuperado")?.toNumber() ?? 0;
+        const tiempoPromedioLlamada = record.get("tiempo_promedio_llamada");
+        const pagosInmediatos = record.get("pagos_inmediatos")?.toNumber() ?? 0;
+        const renegociaciones = record.get("renegociaciones")?.toNumber() ?? 0;
         
-        a.id as id, 
-        a.nombre as nombre,  
-        a.departamento as departamento,
-        count(DISTINCT i) as total_interacciones,
-        count(DISTINCT p) as promesas_generadas,
-        count(DISTINCT pago) as promesas_cumplidas,
-        sum(coalesce(pago.monto, 0))
-        `
 
-        const data  = await this.neo4jClient.runQuery(query, { agenteId })
-        const record = data[0]
-
-        console.log(data)
         return {
             agente: record.get("id"),
             metricas: {
-                total_interacciones: record.get("total_interacciones").toNumber(),
-                promesas_generadas: record.get("promesas_generadas").toNumber(),
-                promesas_cumplidas: record.get("promesas_cumplidas").toNumber(),
-                tasa_cumplimiento: record.get("promesas_generadas").toNumber() > 0
-                    ? (record.get("promesas_cumplidas").toNumber() / record.get("promesas_generadas").toNumber()) * 100
+                total_interacciones: totalInteracciones,
+                promesas_generadas: promesasGeneradas,
+                promesas_cumplidas: promesasCumplidas,
+                tasa_cumplimiento: promesasGeneradas > 0
+                    ? (promesasCumplidas / promesasGeneradas) * 100
                     : 0,
-                monto_recuperado: record.get("monto_recuperado").toNumber(),
-                tiempo_promedio_llamada: record.get("tiempo_promedio_llamada"),
+                monto_recuperado: montoRecuperado,
+                tiempo_promedio_llamada: tiempoPromedioLlamada,
+                pagos_inmediatos: pagosInmediatos,
+                renegociaciones: renegociaciones
             }
-        }
+        };
     }
+
 }
-
-
-//  // Efectividad de agente
-//  async getAgenteEfectividad(agenteId: string, fechaInicio?: string, fechaFin?: string): Promise<any> {
-//     const agente = await this.runQuery(`
-//       MATCH (a:Agente {id: $agenteId}) 
-//       RETURN a
-//     `, { agenteId });
-    
-//     if (agente.length === 0) return null;
-
-//     const metricas = await this.runQuery(`
-//       MATCH (a:Agente {id: $agenteId})<-[:REALIZADA_POR]-(i:Interaccion)
-//       OPTIONAL MATCH (i)-[:GENERA_PROMESA]->(p:Promesa)
-//       OPTIONAL MATCH (p)-[:CUMPLIDA_CON]->(pago:Pago)
-//       OPTIONAL MATCH (i)-[:GENERA_PAGO]->(pago_directo:Pago)
-      
-//       WITH i, p, pago, pago_directo
-      
-//       RETURN count(DISTINCT i) as total_interacciones,
-//              count(DISTINCT p) as promesas_generadas,
-//              count(DISTINCT pago) as promesas_cumplidas,
-//              sum(coalesce(pago.monto, 0) + coalesce(pago_directo.monto, 0)) as monto_recuperado,
-//              avg(i.duracion_segundos) as tiempo_promedio_llamada
-//     `, { agenteId });
-
-//     return {
-//       agente: agente[0].get('a').properties,
-//       metricas: metricas[0] ? {
-//         total_interacciones: metricas[0].get('total_interacciones'),
-//         promesas_generadas: metricas[0].get('promesas_generadas'),
-//         promesas_cumplidas: metricas[0].get('promesas_cumplidas'),
-//         tasa_cumplimiento: metricas[0].get('promesas_generadas') > 0 
-//           ? (metricas[0].get('promesas_cumplidas') / metricas[0].get('promesas_generadas')) * 100 
-//           : 0,
-//         monto_recuperado: metricas[0].get('monto_recuperado'),
-//         tiempo_promedio_llamada: metricas[0].get('tiempo_promedio_llamada'),
-//         distribución_sentimientos: {},
-//         mejores_horarios: []
-//       } : null
-//     };
-//   }

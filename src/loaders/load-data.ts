@@ -294,7 +294,6 @@ export class DataLoader {
                                 id: $id,
                                 monto: $montoPrometido,
                                 fecha_promesa: date($fechaPromesa),
-                                estado: 'pendiente'
                             })
                             CREATE (i)-[:GENERO_PROMESA]->(pp)
                         `, {

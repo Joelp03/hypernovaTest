@@ -4,6 +4,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { clientesRoutes } from './routes/client.routes';
 import { DataLoader } from './loaders/load-data';
 import { agentesRoutes } from './routes/agentes.routes';
+import { analyticRoutes } from './routes/analtytic.routes';
 // import { agentesRoutes } from './routes/agentes.routes.js';
 // import { analyticsRoutes } from './routes/analytics.routes.js';
 
@@ -38,7 +39,7 @@ app.get("/load-data", async (req: Request, res: Response) => {
 app.use('/api/clientes', clientesRoutes);
 app.use('/api/agentes', agentesRoutes);
 //app.use('/api/agentes', agentesRoutes);
-// app.use('/api/analytics', analyticsRoutes);
+app.use('/api/analytics', analyticRoutes);
 
 
 

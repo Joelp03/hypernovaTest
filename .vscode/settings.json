@@ -1,7 +1,34 @@
 {
     "cSpell.words": [
+        "Agente",
+        "Cliente",
+        "CUMPLIDA",
+        "cumplidas",
+        "cumplimiento",
+        "Deuda",
+        "directo",
+        "distribución",
+        "duracion",
+        "generadas",
+        "horarios",
         "inicial",
+        "Interaccion",
+        "interacciones",
+        "llamada",
+        "mejores",
+        "metricas",
+        "monto",
         "nombre",
-        "telefono"
-    ]
+        "Pago",
+        "promedio",
+        "Promesa",
+        "promesas",
+        "REALIZADA",
+        "recuperado",
+        "segundos",
+        "sentimientos",
+        "telefono",
+        "tiempo"
+    ],
+    "kiroAgent.configureMCP": "Disabled"
 }

@@ -61,7 +61,6 @@ export interface ClienteNode {
   nombre: string;
   telefono: string;
   email?: string;
-  estado_cuenta: 'activo' | 'moroso' | 'liquidado' | 'disputado';
   total_deuda_actual: number;
   fecha_ultimo_contacto: string;
   created_at: string;
@@ -121,19 +120,7 @@ export interface PagoNode {
   created_at: string;
 }
 
-export interface PromesaNode {
-  id: string;
-  interaccion_id: string;
-  cliente_id: string;
-  monto_prometido: number;
-  fecha_promesa: string;
-  fecha_vencimiento: string;
-  estado: 'pendiente' | 'cumplida' | 'incumplida' | 'vencida';
-  cumplida: boolean;
-  pago_id?: string;
-  created_at: string;
-  updated_at: string;
-}
+
 
 // ===== RELACIONES DEL GRAFO =====
 
@@ -158,9 +145,19 @@ export type RelationshipType =
 
 // ===== TIPOS PARA API RESPONSES =====
 
+// export interface TimelineEvent {
+//   id: string;
+//   tipo: 'interaccion' | 'pago' | 'promesa';
+//   fecha: string;
+//   agente?: string;
+//   monto?: number;
+//   estado?: string;
+//   detalles: Record<string, any>;
+// }
+
 export interface TimelineEvent {
   id: string;
-  tipo: 'interaccion' | 'pago' | 'promesa';
+  tipo: 'interaccion' | 'pago' | 'promesa' | 'renegociacion';
   fecha: string;
   titulo: string;
   descripcion: string;
@@ -190,26 +187,20 @@ export interface AgenteEfectividad {
     tasa_cumplimiento: number;
     monto_recuperado: number;
     tiempo_promedio_llamada: number;
-    distribución_sentimientos: Record<string, number>;
-    mejores_horarios: Array<{
-      hora: number;
-      efectividad: number;
-    }>;
+    pagos_inmediatos: number;
+    renegociaciones: number;
+    // distribución_sentimientos: Record<string, number>;
+    // mejores_horarios: Array<{
+    //   hora: number;
+    //   efectividad: number;
+    // }>;
   };
-  periodo: {
-    inicio: string;
-    fin: string;
-  };
+  // periodo: {
+  //   inicio: string;
+  //   fin: string;
+  // };
 }
 
-export interface PromesaIncumplida {
-  promesa: PromesaNode;
-  cliente: ClienteNode;
-  interaccion: InteraccionNode;
-  agente?: AgenteNode;
-  dias_vencida: number;
-  monto_pendiente: number;
-}
 
 export interface KPIsDashboard {
   tasa_recuperacion: number;
@@ -305,4 +296,20 @@ export interface AnalyticsQuery {
     tiposDeuda?: string[];
     estados?: string[];
   };
+}
+
+export interface PromesaIncumplida  {
+    clienteId: string;
+    promesaId: string;
+    montoPrometido: number;
+    fechaPromesa: string;
+    totalPagado: number;
+    saldoIncumplido: number;
+}
+
+export interface InteraccionEfectiva {
+    hora: number;
+    exitosas: number;
+    totalInteracciones: number;
+    efectividad: number;
 }
