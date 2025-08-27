@@ -307,7 +307,7 @@ export interface PromesaIncumplida  {
     saldoIncumplido: number;
 }
 
-export interface InteraccionEfectiva {
+export interface InteraccionEfectivaHorario {
     hora: number;
     exitosas: number;
     totalInteracciones: number;

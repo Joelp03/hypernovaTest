@@ -1,5 +1,5 @@
 import { neo4jService } from "./neo4j.services";
-import { InteraccionEfectiva, PromesaIncumplida } from "@/types";
+import {  InteraccionEfectivaHorario, PromesaIncumplida } from "@/types";
 import { safeToNumber } from "@/utils";
 
 export class AnalyticServices {
@@ -34,37 +34,32 @@ export class AnalyticServices {
 
     }
 
-    async getMejoresHorariosDeInteraccionEfectiva(): Promise<InteraccionEfectiva[]> {
+    async getMejoresHorariosDeInteraccionEfectiva(): Promise<InteraccionEfectivaHorario[]> {
 
         const query = `
-            MATCH (i:Interaccion)
-            WITH i, datetime(i.timestamp) AS timestamp
-            WITH timestamp.hour AS hora,
-                CASE WHEN i.resultado IN ["promesa_pago", "pago_recibido"] THEN 1 ELSE 0 END AS exitosa, i
-            
-            WITH hora,
-                sum(exitosa) AS exitosas,
-                count(i) AS total
-            
-            RETURN hora,
-                exitosas,
-                total,
-                round(toFloat(exitosas) / total * 100, 2) AS efectividad
-            ORDER BY efectividad DESC
+    MATCH (i:Interaccion)
+    WITH datetime(i.timestamp).hour AS hora,
+     CASE WHEN i.resultado IN ["promesa_pago", "pago_recibido"] THEN 1 ELSE 0 END AS exitosa
+    RETURN hora,
+       sum(exitosa) AS exitosas,
+       count(*) AS total,
+       round(toFloat(sum(exitosa)) / count(*) * 100, 2) AS efectividad
+    ORDER BY efectividad DESC
         `;
 
-            const results = await this.neo4jClient.runQuery(query);
 
-            const data = results.map(record => {
-                return {
-                    hora: safeToNumber(record.get("hora")),
-                    exitosas: safeToNumber(record.get("exitosas")),
-                    totalInteracciones: safeToNumber(record.get("total")),
-                    efectividad: safeToNumber(record.get("efectividad"))
-                }
-            })
+        const results = await this.neo4jClient.runQuery(query);
 
-            return data;
+        const data = results.map(record => {
+            return {
+                hora: safeToNumber(record.get("hora")),
+                exitosas: safeToNumber(record.get("exitosas")),
+                totalInteracciones: safeToNumber(record.get("total")),
+                efectividad: safeToNumber(record.get("efectividad"))
+            }
+        })
+
+        return data;
     }
 }
 
