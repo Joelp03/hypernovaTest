@@ -101,7 +101,6 @@ export interface InteraccionNode {
   hora: string;
   timestamp: string;
   tipo_contacto: string;
-  canal: string;
   resultado?: string;
   sentimiento?: string;
   duracion_segundos?: number;

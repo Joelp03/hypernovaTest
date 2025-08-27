@@ -188,7 +188,7 @@ export class DataLoader {
       try {
         const nameAgente = `name_${agenteId}`;
         await neo4jService.runQuery(`
-          CREATE (a:Agente {
+          MERGE (a:Agente {
             id: $agenteId,
             nombre: $nombre,
             departamento: 'Cobranzas',
@@ -222,6 +222,9 @@ export class DataLoader {
         const interaccion = interacciones[i];
 
         try {
+          const agenteId = interaccion.agente_id ?? null; // Si es nulo, usamos una cadena vacía
+          const resultado = interaccion.resultado ?? null; // Si es nulo, usamos 'desconocido'
+          const sentimiento = interaccion.sentimiento ?? null;
           // executeWrite asegura que todas las operaciones dentro de esta función
           // se ejecuten en una única transacción.
           await session.executeWrite(async tx => {
@@ -243,17 +246,16 @@ export class DataLoader {
                     `, {
               id: interaccion.id,
               clienteId: interaccion.cliente_id,
-              agenteId: interaccion.agente_id,
+              agenteId: agenteId,
+              resultado: resultado,
+              sentimiento: sentimiento,
               timestamp: interaccion.timestamp,
               tipo: interaccion.tipo,
-              resultado: interaccion.resultado?.toString(),
-              sentimiento: interaccion.sentimiento?.toString(),
               duracion: interaccion.duracion_segundos || 0
             });
 
             // 2. Conectar con el Agente si existe
             if (interaccion.agente_id) {
-              console.log("Connect to agent if agent exists")
               await tx.run(`
                             MATCH (i:Interaccion {id: $interaccionId})
                             MATCH (a:Agente {id: $agenteId})
@@ -266,7 +268,6 @@ export class DataLoader {
 
             // 3. Crear nodo de Pago si corresponde
             if (interaccion.tipo === 'pago_recibido' && interaccion.monto) {
-              console.log("Create node Pago ")
               await tx.run(`
                             MATCH (i:Interaccion {id: $interaccionId})
                             CREATE (p:Pago {
