@@ -169,186 +169,192 @@ export class ClientServices {
     };
   }
 
-  /**
-   * Obtiene todos los eventos del timeline (interacciones, pagos, promesas)
-   */
-  private async getTimelineEvents(
-    clienteId: string, 
-    filtros: any = {}
-  ): Promise<TimelineEvent[]> {
-    
-    const whereConditions: string[] = [];
-    const parameters: any = { clienteId };
+ /**
+     * Obtiene todos los eventos del timeline (interacciones, pagos, promesas, renegociaciones)
+     */
+ private async getTimelineEvents(
+  clienteId: string, 
+  filtros: any = {}
+): Promise<TimelineEvent[]> {
+  
+  const whereConditions: string[] = [];
+  const parameters: any = { clienteId };
 
-    // Construir filtros dinámicos
-    if (filtros.fechaInicio) {
+  // Construir filtros dinámicos
+  if (filtros.fechaInicio) {
       whereConditions.push('evento.timestamp >= datetime($fechaInicio)');
       parameters.fechaInicio = `${filtros.fechaInicio}T00:00:00Z`;
-    }
+  }
 
-    if (filtros.fechaFin) {
+  if (filtros.fechaFin) {
       whereConditions.push('evento.timestamp <= datetime($fechaFin)');
       parameters.fechaFin = `${filtros.fechaFin}T23:59:59Z`;
-    }
+  }
 
-    if (filtros.tiposInteraccion && filtros.tiposInteraccion.length > 0) {
-      whereConditions.push('(evento.tipo_contacto IN $tiposInteraccion OR evento_tipo = "pago" OR evento_tipo = "promesa")');
+  if (filtros.tiposInteraccion && filtros.tiposInteraccion.length > 0) {
+      whereConditions.push('(evento.tipo_contacto IN $tiposInteraccion OR evento_tipo IN ["pago", "promesa", "renegociacion"])');
       parameters.tiposInteraccion = filtros.tiposInteraccion;
-    }
+  }
 
-    if (filtros.agentes && filtros.agentes.length > 0) {
+  if (filtros.agentes && filtros.agentes.length > 0) {
       whereConditions.push('agente.id IN $agentes');
       parameters.agentes = filtros.agentes;
-    }
+  }
 
-    const whereClause = whereConditions.length > 0 
+  const whereClause = whereConditions.length > 0 
       ? `WHERE ${whereConditions.join(' AND ')}` 
       : '';
 
-    const limite = filtros.limite || 50;
-    parameters.limite = limite;
+  const limite = filtros.limite || 50;
+  parameters.limite = limite;
 
-    const query = `
-      MATCH (c:Cliente {id: $clienteId})
-      
-      // Obtener interacciones
-      OPTIONAL MATCH (c)-[:PARTICIPA_EN]->(i:Interaccion)
-      OPTIONAL MATCH (i)-[:REALIZADA_POR]->(a_int:Agente)
-      OPTIONAL MATCH (i)-[:GENERA_PROMESA]->(pr:PromesaDePago)
-      
-      WITH c, i, a_int, pr,
-           CASE 
-             WHEN i IS NOT NULL THEN {
-               id: i.id,
-               tipo: 'interaccion',
-               timestamp: i.timestamp,
-               titulo: CASE i.tipo_contacto
-                 WHEN 'llamada_saliente' THEN 'Llamada saliente'
-                 WHEN 'llamada_entrante' THEN 'Llamada entrante'
-                 WHEN 'email' THEN 'Email enviado'
-                 WHEN 'sms' THEN 'SMS enviado'
-                 ELSE i.tipo_contacto
-               END,
-               descripcion: CASE 
-                 WHEN i.resultado IS NOT NULL THEN i.resultado
-                 ELSE 'Contacto realizado'
-               END,
-               agente: a_int.nombre,
-               monto: pr.monto_prometido,
-               estado: i.resultado,
-               detalles: {
-                 duracion: i.duracion_segundos,
-                 sentimiento: i.sentimiento,
-                 resultado: i.resultado,
-                 monto_prometido: pr.monto_prometido,
-                 tipo_contacto: i.tipo_contacto
-               },
-               evento_tipo: 'interaccion',
+  const query = `
+    MATCH (c:Cliente {id: $clienteId})
+    
+    // Obtener interacciones
+    OPTIONAL MATCH (c)-[:PARTICIPA_EN]->(i:Interaccion)
+    OPTIONAL MATCH (i)-[:REALIZADA_POR]->(a_int:Agente)
+    OPTIONAL MATCH (i)-[:GENERO_PROMESA]->(pr:PromesaDePago)
+    
+    WITH c, i, a_int, pr,
+         CASE 
+           WHEN i IS NOT NULL THEN {
+             id: i.id,
+             tipo: 'interaccion',
+             timestamp: i.timestamp,
+             titulo: i.tipo_contacto,
+             descripcion: i.resultado,
+             agente: a_int.nombre,
+             monto: pr.monto,
+             estado: i.resultado,
+             detalles: {
+               duracion: i.duracion_segundos,
+               sentimiento: i.sentimiento,
+               resultado: i.resultado,
+               monto_prometido: pr.monto,
                tipo_contacto: i.tipo_contacto
-             }
-             ELSE null
-           END as evento_interaccion,
-           a_int as agente
-      
-      // Obtener pagos
-      OPTIONAL MATCH (c)-[:REALIZA]->(p:Pago)
-      OPTIONAL MATCH (p)<-[:GENERA_PAGO]-(i_pago:Interaccion)
-      OPTIONAL MATCH (i_pago)-[:REALIZADA_POR]->(a_pago:Agente)
-      
-      WITH c, evento_interaccion, agente,
-           CASE 
-             WHEN p IS NOT NULL THEN {
-               id: p.id,
-               tipo: 'pago',
-               timestamp: datetime(p.fecha + 'T12:00:00Z'),
-               titulo: 'Pago recibido',
-               descripcion: CASE p.metodo_pago
-                 WHEN 'transferencia' THEN 'Transferencia bancaria'
-                 WHEN 'tarjeta' THEN 'Pago con tarjeta'
-                 WHEN 'efectivo' THEN 'Pago en efectivo'
-                 ELSE p.metodo_pago
-               END,
-               agente: a_pago.nombre,
-               monto: p.monto,
-               estado: p.estado,
-               detalles: {
-                 metodo_pago: p.metodo_pago,
-                 pago_completo: p.pago_completo,
-                 referencia: p.referencia
-               },
-               evento_tipo: 'pago'
-             }
-             ELSE null
-           END as evento_pago
-      
-      // Obtener promesas
-      OPTIONAL MATCH (c)-[:PARTICIPA_EN]->(:Interaccion)-[:GENERA_PROMESA]->(pm:Promesa)
-      OPTIONAL MATCH (pm)<-[:GENERA_PROMESA]-(i_promesa:Interaccion)-[:REALIZADA_POR]->(a_promesa:Agente)
-      
-      WITH c, evento_interaccion, evento_pago, agente,
-           CASE 
-             WHEN pm IS NOT NULL THEN {
-               id: pm.id,
-               tipo: 'promesa',
-               timestamp: datetime(pm.fecha_promesa + 'T12:00:00Z'),
-               titulo: CASE 
-                 WHEN pm.cumplida THEN 'Promesa cumplida'
-                 WHEN pm.fecha_vencimiento < date() THEN 'Promesa vencida'
-                 ELSE 'Promesa de pago'
-               END,
-               descripcion: 'Promesa de pago por $' + toString(pm.monto_prometido),
-               agente: a_promesa.nombre,
-               monto: pm.monto_prometido,
-               estado: pm.estado,
-               detalles: {
-                 fecha_vencimiento: pm.fecha_vencimiento,
-                 cumplida: pm.cumplida,
-                 monto_prometido: pm.monto_prometido
-               },
-               evento_tipo: 'promesa'
-             }
-             ELSE null
-           END as evento_promesa
-      
-      // Unir todos los eventos
-      WITH [evento_interaccion, evento_pago, evento_promesa] as todos_eventos, agente
-      UNWIND todos_eventos as evento
-      
-      WITH evento, agente
-      WHERE evento IS NOT NULL
-      ${whereClause.replace('evento.tipo_contacto', 'evento.tipo_contacto').replace('agente.id', 'agente.id')}
-      
-      RETURN evento.id as id,
-             evento.tipo as tipo,
-             toString(evento.timestamp) as fecha,
-             evento.titulo as titulo, 
-             evento.descripcion as descripcion,
-             evento.agente as agente,
-             evento.monto as monto,
-             evento.estado as estado,
-             evento.detalles as detalles
-      
-      ORDER BY evento.timestamp DESC
-    `;
+             },
+             evento_tipo: 'interaccion',
+             tipo_contacto: i.tipo_contacto
+           }
+           ELSE null
+         END as evento_interaccion,
+         a_int as agente
+    
+    // Obtener pagos
+    OPTIONAL MATCH (c)-[:PARTICIPA_EN]->(i_pago:Interaccion)-[:GENERO_PAGO]->(p:Pago)
+    OPTIONAL MATCH (i_pago)-[:REALIZADA_POR]->(a_pago:Agente)
+    
+    WITH c, evento_interaccion, agente,
+         CASE 
+           WHEN p IS NOT NULL THEN {
+             id: p.id,
+             tipo: 'pago',
+             timestamp: datetime(toString(p.fecha) + 'T12:00:00Z'),
+             titulo: 'Pago recibido',
+             descripcion: 'Pago realizado',
+             agente: a_pago.nombre,
+             monto: p.monto,
+             estado: 'completado',
+             detalles: {
+               metodo_pago: p.metodo,
+               pago_completo: p.pago_completo
+             },
+             evento_tipo: 'pago'
+           }
+           ELSE null
+         END as evento_pago
+    
+    // Obtener promesas
+    OPTIONAL MATCH (c)-[:PARTICIPA_EN]->(i_promesa:Interaccion)-[:GENERO_PROMESA]->(pm:PromesaDePago)
+    OPTIONAL MATCH (i_promesa)-[:REALIZADA_POR]->(a_promesa:Agente)
+    
+    WITH c, evento_interaccion, evento_pago, agente,
+         CASE 
+           WHEN pm IS NOT NULL THEN {
+             id: pm.id,
+             tipo: 'promesa',
+             timestamp: datetime(toString(pm.fecha_promesa) + 'T12:00:00Z'),
+             titulo: 'promesa de pago',
+             descripcion: 'Promesa de pago por $' + toString(pm.monto),
+             agente: a_promesa.nombre,
+             monto: pm.monto,
+             estado: pm.estado,
+             detalles: {
+               fecha_promesa: toString(pm.fecha_promesa),
+               monto_prometido: pm.monto,
+               estado: pm.estado
+             },
+             evento_tipo: 'promesa'
+           }
+           ELSE null
+         END as evento_promesa
 
-    try {
+    // *** NUEVO: Obtener renegociaciones ***
+    OPTIONAL MATCH (c)-[:PARTICIPA_EN]->(i_renego:Interaccion)-[:GENERO_RENEGOCIACION]->(rn:Renegociacion)
+    OPTIONAL MATCH (i_renego)-[:REALIZADA_POR]->(a_renego:Agente)
+    
+    WITH c, evento_interaccion, evento_pago, evento_promesa, agente,
+         CASE 
+           WHEN rn IS NOT NULL THEN {
+             id: rn.id,
+             tipo: 'renegociacion',
+             timestamp: i_renego.timestamp,
+             titulo: 'Renegociación de deuda',
+             descripcion: 'Renegociación de deuda',
+             agente: a_renego.nombre,
+             monto: rn.monto_mensual,
+             estado: 'activa',
+             detalles: {
+               cuotas: rn.cuotas,
+               monto_mensual: rn.monto_mensual,
+               monto_total: rn.cuotas * rn.monto_mensual
+             },
+             evento_tipo: 'renegociacion'
+           }
+           ELSE null
+         END as evento_renegociacion
+    
+    // Unir todos los eventos
+    WITH [evento_interaccion, evento_pago, evento_promesa, evento_renegociacion] as todos_eventos, agente
+    UNWIND todos_eventos as evento
+    
+    WITH evento, agente
+    WHERE evento IS NOT NULL
+    ${whereClause.replace('evento.tipo_contacto', 'evento.tipo_contacto').replace('agente.id', 'agente.id')}
+    
+    WITH evento.id as id, collect(evento)[0] as evento
+    RETURN evento.id as id,
+           evento.tipo as tipo,
+           toString(evento.timestamp) as fecha,
+           evento.titulo as titulo, 
+           evento.descripcion as descripcion,
+           evento.agente as agente,
+           evento.monto as monto,
+           evento.estado as estado,
+           evento.detalles as detalles
+    
+    ORDER BY evento.timestamp DESC
+  `;
+
+  try {
       const records = await neo4jService.runQuery(query, parameters);
       
       return records.map(record => ({
-        id: record.get('id'),
-        tipo: record.get('tipo') as 'interaccion' | 'pago' | 'promesa',
-        fecha: record.get('fecha'),
-        titulo: record.get('titulo'),
-        descripcion: record.get('descripcion'),
-        agente: record.get('agente'),
-        monto: record.get('monto'),
-        estado: record.get('estado'),
-        detalles: record.get('detalles') || {}
+          id: record.get('id'),
+          tipo: record.get('tipo') as 'interaccion' | 'pago' | 'promesa' | 'renegociacion',
+          fecha: record.get('fecha'),
+          titulo: record.get('titulo'),
+          descripcion: record.get('descripcion'),
+          agente: record.get('agente'),
+          monto: record.get('monto'),
+          estado: record.get('estado'),
+          detalles: record.get('detalles') || {}
       }));
-    } catch (error) {
+  } catch (error) {
       console.error('Error ejecutando query timeline:', error);
       return [];
-    }
   }
+}
 
 }

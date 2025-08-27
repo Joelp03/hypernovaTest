@@ -93,30 +93,30 @@ export class DataLoader {
   private async createConstraints(): Promise<void> {
     console.log('🔧 Creando constraints e índices...');
 
-    const constraints = [
-      // Constraints únicos
-      'CREATE CONSTRAINT cliente_id IF NOT EXISTS FOR (c:Cliente) REQUIRE c.id IS UNIQUE',
-      'CREATE CONSTRAINT agente_id IF NOT EXISTS FOR (a:Agente) REQUIRE a.id IS UNIQUE',
-      'CREATE CONSTRAINT deuda_id IF NOT EXISTS FOR (d:Deuda) REQUIRE d.id IS UNIQUE',
-      'CREATE CONSTRAINT interaccion_id IF NOT EXISTS FOR (i:Interaccion) REQUIRE i.id IS UNIQUE',
-      'CREATE CONSTRAINT pago_id IF NOT EXISTS FOR (p:Pago) REQUIRE p.id IS UNIQUE',
-      'CREATE CONSTRAINT promesa_id IF NOT EXISTS FOR (pr:Promesa) REQUIRE pr.id IS UNIQUE',
+    // const constraints = [
+    //   // Constraints únicos
+    //   'CREATE CONSTRAINT cliente_id IF NOT EXISTS FOR (c:Cliente) REQUIRE c.id IS UNIQUE',
+    //   'CREATE CONSTRAINT agente_id IF NOT EXISTS FOR (a:Agente) REQUIRE a.id IS UNIQUE',
+    //   'CREATE CONSTRAINT deuda_id IF NOT EXISTS FOR (d:Deuda) REQUIRE d.id IS UNIQUE',
+    //   'CREATE CONSTRAINT interaccion_id IF NOT EXISTS FOR (i:Interaccion) REQUIRE i.id IS UNIQUE',
+    //   'CREATE CONSTRAINT pago_id IF NOT EXISTS FOR (p:Pago) REQUIRE p.id IS UNIQUE',
+    //   'CREATE CONSTRAINT promesa_id IF NOT EXISTS FOR (pr:PromesaDePago) REQUIRE pr.id IS UNIQUE',
 
-      // Índices para búsquedas
-      'CREATE INDEX cliente_nombre IF NOT EXISTS FOR (c:Cliente) ON (c.nombre)',
-      'CREATE INDEX interaccion_timestamp IF NOT EXISTS FOR (i:Interaccion) ON (i.timestamp)',
-      'CREATE INDEX pago_fecha IF NOT EXISTS FOR (p:Pago) ON (p.fecha)',
-      'CREATE INDEX promesa_fecha_vencimiento IF NOT EXISTS FOR (pr:Promesa) ON (pr.fecha_vencimiento)'
-    ];
+    //   // Índices para búsquedas
+    //   'CREATE INDEX cliente_nombre IF NOT EXISTS FOR (c:Cliente) ON (c.nombre)',
+    //   'CREATE INDEX interaccion_timestamp IF NOT EXISTS FOR (i:Interaccion) ON (i.timestamp)',
+    //   'CREATE INDEX pago_fecha IF NOT EXISTS FOR (p:Pago) ON (p.fecha)',
+    //   'CREATE INDEX promesa_fecha_vencimiento IF NOT EXISTS FOR (pr:PromesaDePago) ON (pr.fecha_vencimiento)'
+    // ];
 
-    for (const constraint of constraints) {
-      try {
-        await neo4jService.runQuery(constraint);
-      } catch (error) {
-        // Los constraints pueden fallar si ya existen
-        console.warn(`Advertencia creando constraint: ${constraint}`);
-      }
-    }
+    // for (const constraint of constraints) {
+    //   try {
+    //     await neo4jService.runQuery(constraint);
+    //   } catch (error) {
+    //     // Los constraints pueden fallar si ya existen
+    //     console.warn(`Advertencia creando constraint: ${constraint}`);
+    //   }
+    // }
   }
 
   private async loadClientes(clientes: ClienteRaw[]): Promise<void> {
@@ -130,7 +130,6 @@ export class DataLoader {
             id: $id,
             nombre: $nombre,
             telefono: $telefono,
-            estado_cuenta: 'activo',
             fecha_ultimo_contacto: null,
             created_at: datetime(),
             updated_at: datetime()
@@ -274,7 +273,7 @@ export class DataLoader {
                                 id: $id,
                                 monto: $monto,
                                 metodo: $metodo,
-                                es_completo: $esCompleto,
+                                pago_completo: $esCompleto,
                                 fecha: date(i.timestamp)
                             })
                             CREATE (i)-[:GENERO_PAGO]->(p)
@@ -299,13 +298,32 @@ export class DataLoader {
                             })
                             CREATE (i)-[:GENERO_PROMESA]->(pp)
                         `, {
-                          id: randomUUID(),
+                id: randomUUID(),
                 interaccionId: interaccion.id,
                 montoPrometido: interaccion.monto_prometido,
                 fechaPromesa: interaccion.fecha_promesa
               });
             }
+
+            if (interaccion.resultado === "renegociacion" && interaccion.nuevo_plan_pago?.cuotas && interaccion.nuevo_plan_pago?.monto_mensual) {
+              await tx.run(`
+                            MATCH (i:Interaccion {id: $interaccionId})
+                            CREATE (re:Renegociacion {
+                                id: $id,
+                                cuotas: $cuotas,
+                                monto_mensual: $montoMensual
+                            })
+                            CREATE (i)-[:GENERO_RENEGOCIACION]->(re)
+                        `, {
+                id: randomUUID(),
+                interaccionId: interaccion.id,
+                cuotas: interaccion.nuevo_plan_pago.cuotas,
+                montoMensual: interaccion.nuevo_plan_pago.monto_mensual
+              });
+            }
           });
+
+
 
           this.stats.interaccionesCargadas++;
 
@@ -319,8 +337,8 @@ export class DataLoader {
           this.stats.errores.push(`Error en transacción para interacción ${interaccion.id}: ${error}`);
         }
       }
-    } finally  {
-       await session.close();
+    } finally {
+      await session.close();
     }
 
   }
