@@ -214,7 +214,7 @@ export class ClientServices {
       // Obtener interacciones
       OPTIONAL MATCH (c)-[:PARTICIPA_EN]->(i:Interaccion)
       OPTIONAL MATCH (i)-[:REALIZADA_POR]->(a_int:Agente)
-      OPTIONAL MATCH (i)-[:GENERA_PROMESA]->(pr:Promesa)
+      OPTIONAL MATCH (i)-[:GENERA_PROMESA]->(pr:PromesaDePago)
       
       WITH c, i, a_int, pr,
            CASE 
