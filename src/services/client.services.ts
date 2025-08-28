@@ -3,10 +3,10 @@ import { neo4jService } from "./neo4j.services";
 
 
 export class ClientServices {
-    private readonly neo4jClient = neo4jService
-    public async getClients(limite: number = 50): Promise<ClienteRaw[]> {
+  private readonly neo4jClient = neo4jService
+  public async getClients(limite: number = 50): Promise<ClienteRaw[]> {
 
-        const query = `
+    const query = `
           MATCH (c:Cliente)-[:TIENE_DEUDA]->(d:Deuda)
           RETURN 
             c.id as id, 
@@ -18,43 +18,43 @@ export class ClientServices {
           ORDER BY c.nombre
           `;
 
-        try {
-            const records = await this.neo4jClient.runQuery(query);
+    try {
+      const records = await this.neo4jClient.runQuery(query);
 
-            return records.map(record => {
-                const tipoDeuda = record.get('tipo_deuda');
+      return records.map(record => {
+        const tipoDeuda = record.get('tipo_deuda');
 
-                const tiposPermitidos: Array<ClienteRaw['tipo_deuda']> = [
-                    'tarjeta_credito',
-                    'prestamo_personal',
-                    'hipoteca',
-                    'auto'
-                ];
+        const tiposPermitidos: Array<ClienteRaw['tipo_deuda']> = [
+          'tarjeta_credito',
+          'prestamo_personal',
+          'hipoteca',
+          'auto'
+        ];
 
-                const tipoDeudaValidado = tiposPermitidos.includes(tipoDeuda)
-                    ? tipoDeuda
-                    : 'prestamo_personal'; // Valor por defecto si no coincide
+        const tipoDeudaValidado = tiposPermitidos.includes(tipoDeuda)
+          ? tipoDeuda
+          : 'prestamo_personal'; // Valor por defecto si no coincide
 
-                return {
-                    id: record.get('id') || '',
-                    nombre: record.get('nombre') || '',
-                    telefono: record.get('telefono') || '',
-                    monto_deuda_inicial: Number(record.get('monto_deuda_inicial')) || 0,
-                    fecha_prestamo: record.get('fecha_prestamo') || '',
-                    tipo_deuda: tipoDeudaValidado
-                };
-            });
-        } catch (error) {
-            console.error("Error obteniendo clientes:", error);
-            throw error;
-        }
+        return {
+          id: record.get('id') || '',
+          nombre: record.get('nombre') || '',
+          telefono: record.get('telefono') || '',
+          monto_deuda_inicial: Number(record.get('monto_deuda_inicial')) || 0,
+          fecha_prestamo: record.get('fecha_prestamo') || '',
+          tipo_deuda: tipoDeudaValidado
+        };
+      });
+    } catch (error) {
+      console.error("Error obteniendo clientes:", error);
+      throw error;
     }
+  }
 
-     /**
-   * Obtiene el timeline completo de un cliente específico
-   */
+  /**
+* Obtiene el timeline completo de un cliente específico
+*/
   async getClienteTimeline(
-    clienteId: string, 
+    clienteId: string,
     filtros: {
       fechaInicio?: string;
       fechaFin?: string;
@@ -65,7 +65,7 @@ export class ClientServices {
       limite?: number;
     } = {}
   ): Promise<ClienteTimeline | null> {
-    
+
     // 1. Obtener información del cliente
     const cliente = await this.getClienteInfo(clienteId);
     if (!cliente) return null;
@@ -169,46 +169,46 @@ export class ClientServices {
     };
   }
 
- /**
-     * Obtiene todos los eventos del timeline (interacciones, pagos, promesas, renegociaciones)
-     */
- private async getTimelineEvents(
-  clienteId: string, 
-  filtros: any = {}
-): Promise<TimelineEvent[]> {
-  
-  const whereConditions: string[] = [];
-  const parameters: any = { clienteId };
+  /**
+      * Obtiene todos los eventos del timeline (interacciones, pagos, promesas, renegociaciones)
+      */
+  private async getTimelineEvents(
+    clienteId: string,
+    filtros: any = {}
+  ): Promise<TimelineEvent[]> {
 
-  // Construir filtros dinámicos
-  if (filtros.fechaInicio) {
+    const whereConditions: string[] = [];
+    const parameters: any = { clienteId };
+
+    // Construir filtros dinámicos
+    if (filtros.fechaInicio) {
       whereConditions.push('evento.timestamp >= datetime($fechaInicio)');
       parameters.fechaInicio = `${filtros.fechaInicio}T00:00:00Z`;
-  }
+    }
 
-  if (filtros.fechaFin) {
+    if (filtros.fechaFin) {
       whereConditions.push('evento.timestamp <= datetime($fechaFin)');
       parameters.fechaFin = `${filtros.fechaFin}T23:59:59Z`;
-  }
+    }
 
-  if (filtros.tiposInteraccion && filtros.tiposInteraccion.length > 0) {
+    if (filtros.tiposInteraccion && filtros.tiposInteraccion.length > 0) {
       whereConditions.push('(evento.tipo_contacto IN $tiposInteraccion OR evento_tipo IN ["pago", "promesa", "renegociacion"])');
       parameters.tiposInteraccion = filtros.tiposInteraccion;
-  }
+    }
 
-  if (filtros.agentes && filtros.agentes.length > 0) {
+    if (filtros.agentes && filtros.agentes.length > 0) {
       whereConditions.push('agente.id IN $agentes');
       parameters.agentes = filtros.agentes;
-  }
+    }
 
-  const whereClause = whereConditions.length > 0 
-      ? `WHERE ${whereConditions.join(' AND ')}` 
+    const whereClause = whereConditions.length > 0
+      ? `WHERE ${whereConditions.join(' AND ')}`
       : '';
 
-  const limite = filtros.limite || 50;
-  parameters.limite = limite;
+    const limite = filtros.limite || 50;
+    parameters.limite = limite;
 
-  const query = `
+    const query = `
     MATCH (c:Cliente {id: $clienteId})
     
     // Obtener interacciones
@@ -337,24 +337,19 @@ export class ClientServices {
     ORDER BY evento.timestamp DESC
   `;
 
-  try {
-      const records = await neo4jService.runQuery(query, parameters);
-      
-      return records.map(record => ({
-          id: record.get('id'),
-          tipo: record.get('tipo') as 'interaccion' | 'pago' | 'promesa' | 'renegociacion',
-          fecha: record.get('fecha'),
-          titulo: record.get('titulo'),
-          descripcion: record.get('descripcion'),
-          agente: record.get('agente'),
-          monto: record.get('monto'),
-          estado: record.get('estado'),
-          detalles: record.get('detalles') || {}
-      }));
-  } catch (error) {
-      console.error('Error ejecutando query timeline:', error);
-      return [];
-  }
-}
+    const records = await neo4jService.runQuery(query, parameters);
 
+    return records.map(record => ({
+      id: record.get('id'),
+      tipo: record.get('tipo') as 'interaccion' | 'pago' | 'promesa' | 'renegociacion',
+      fecha: record.get('fecha'),
+      titulo: record.get('titulo'),
+      descripcion: record.get('descripcion'),
+      agente: record.get('agente'),
+      monto: record.get('monto'),
+      estado: record.get('estado'),
+      detalles: record.get('detalles') || {}
+    }));
+
+  }
 }

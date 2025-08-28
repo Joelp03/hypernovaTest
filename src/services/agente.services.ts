@@ -5,81 +5,37 @@ import { int } from "neo4j-driver";
 
 export class AgenteServices {
     private readonly neo4jClient = neo4jService
-    // public async getAgentes(limite: number = 50): Promise<AgenteNode[]> {
-
-    //     const query = `
-    //       MATCH (a:Agente)
-    //       RETURN 
-    //         a.id as id, 
-    //         a.nombre as nombre,  
-    //         a.departamento as departamento,
-    //         a.total_interacciones as total_interacciones,
-    //         a.promesas_cumplidas as promesas_cumplidas,
-    //         a.promesas_totales as promesas_totales,
-    //         a.tasa_efectividad as tasa_efectividad,
-    //         toString(a.created_at) as created_at,
-    //         toString(a.updated_at) as updated_at
-    //       ORDER BY a.nombre
-    //       `;
-
-
-    //     try {
-    //         const records = await this.neo4jClient.runQuery(query);
-
-
-    //          return records.map((record) => {
-    //             return {
-    //                 id: record.get("id"),
-    //                 nombre: record.get("nombre"),
-    //                 departamento: record.get("departamento"),
-    //                 total_interacciones: record.get("total_interacciones").toNumber(),
-    //                 promesas_cumplidas: record.get("promesas_cumplidas").toNumber(),
-    //                 promesas_totales: record.get("promesas_totales").toNumber(),
-    //                 tasa_efectividad: record.get("tasa_efectividad"),
-    //                 created_at: record.get("created_at"),
-    //                 updated_at: record.get("updated_at")
-    //             }
-    //         })
-
-
-    //     } catch (error) {
-    //         console.error("Error obteniendo clientes:", error);
-    //         throw error;
-    //     }
-    // }
-
-
-    public async getAgentes(limite: number = 50): Promise<AgenteNode[]> {
+       public async getAgentes(limite: number = 50): Promise<AgenteNode[]> {
         const query = `
-    MATCH (a:Agente)
-    OPTIONAL MATCH (a)<-[:REALIZADA_POR]-(i:Interaccion)
+        MATCH (a:Agente)
+        OPTIONAL MATCH (a)<-[:REALIZADA_POR]-(i:Interaccion)
     
-    // Collect all interactions data first
-    WITH a, collect(i) as interacciones
+        // Collect all interactions data first
+        WITH a, collect(i) as interacciones
     
-    // Process each interaction to calculate metrics
-    UNWIND CASE WHEN size(interacciones) = 0 THEN [null] ELSE interacciones END as i
+        // Process each interaction to calculate metrics
+        UNWIND CASE WHEN size(interacciones) = 0 THEN [null] ELSE interacciones END as i
     
-    OPTIONAL MATCH (i)-[:GENERO_PROMESA]->(pp:PromesaDePago)
-    OPTIONAL MATCH (i)-[:GENERO_PAGO]->(p:Pago)  
-    OPTIONAL MATCH (i)-[:GENERO_RENEGOCIACION]->(re:Renegociacion)
+        OPTIONAL MATCH (i)-[:GENERO_PROMESA]->(pp:PromesaDePago)
+        OPTIONAL MATCH (i)-[:GENERO_PAGO]->(p:Pago)  
+        OPTIONAL MATCH (i)-[:GENERO_RENEGOCIACION]->(re:Renegociacion)
     
-    // Check promise fulfillment (adjust logic based on your relationship model)
-    OPTIONAL MATCH (i)-[:GENERO_PROMESA]->(pp_check:PromesaDePago)
-    OPTIONAL MATCH (i)-[:GENERO_PAGO]->(p_check:Pago)
-    WHERE p_check.fecha_pago >= pp_check.fecha_promesa 
-      AND p_check.monto >= pp_check.monto
+        // Check promise fulfillment (adjust logic based on your relationship model)
+        OPTIONAL MATCH (i)-[:GENERO_PROMESA]->(pp_check:PromesaDePago)
+        OPTIONAL MATCH (i)-[:GENERO_PAGO]->(p_check:Pago)
+        WHERE p_check.fecha_pago >= pp_check.fecha_promesa 
+        AND p_check.monto >= pp_check.monto
     
-    // Aggregate per interaction
-    WITH a, i,
+        // Aggregate per interaction
+        WITH a, i,
          count(DISTINCT pp) as promesas_por_interaccion,
          count(DISTINCT p) as pagos_por_interaccion,
          count(DISTINCT re) as renegociaciones_por_interaccion,
          count(DISTINCT pp_check) as promesas_cumplidas_por_interaccion,
          sum(DISTINCT p.monto) as monto_pagos_por_interaccion
     
-    // Final aggregation per agent
-    WITH a,
+        // Final aggregation per agent
+        WITH a,
          count(CASE WHEN i IS NOT NULL THEN 1 END) as total_interacciones,
          sum(promesas_por_interaccion) as promesas_totales,
          sum(promesas_cumplidas_por_interaccion) as promesas_cumplidas,
@@ -94,44 +50,43 @@ export class AgenteServices {
          collect(i.sentimiento) as todos_sentimientos
     
     // Calculate sentiment distribution
-    WITH a, total_interacciones, promesas_totales, promesas_cumplidas, 
+        WITH a, total_interacciones, promesas_totales, promesas_cumplidas, 
          total_renegociaciones, total_pagos_recaudados, duraciones_llamadas,
          [s IN todos_sentimientos WHERE s IS NOT NULL] as sentimientos_validos
     
-    RETURN 
-      a.id as id,
-      a.nombre as nombre,
-      a.departamento as departamento,
-      toString(a.created_at) as created_at,
-      toString(a.updated_at) as updated_at,
+        RETURN 
+        a.id as id,
+        a.nombre as nombre,
+        a.departamento as departamento,
+        toString(a.created_at) as created_at,
+        toString(a.updated_at) as updated_at,
+        total_interacciones,
+        promesas_totales,
+        promesas_cumplidas,
+        total_renegociaciones,
+        coalesce(total_pagos_recaudados, 0.0) as total_pagos_recaudados,
       
-      total_interacciones,
-      promesas_totales,
-      promesas_cumplidas,
-      total_renegociaciones,
-      coalesce(total_pagos_recaudados, 0.0) as total_pagos_recaudados,
+        // Effectiveness rate
+        CASE 
+            WHEN promesas_totales > 0 
+            THEN round(promesas_cumplidas * 100.0 / promesas_totales, 2)
+            ELSE 0.0 
+        END as tasa_efectividad,
       
-      // Effectiveness rate
-      CASE 
-        WHEN promesas_totales > 0 
-        THEN round(promesas_cumplidas * 100.0 / promesas_totales, 2)
-        ELSE 0.0 
-      END as tasa_efectividad,
-      
-      // Average call duration
-      CASE 
-        WHEN size([d IN duraciones_llamadas WHERE d IS NOT NULL]) > 0
-        THEN round(reduce(sum = 0.0, d IN duraciones_llamadas | sum + d) / size([d IN duraciones_llamadas WHERE d IS NOT NULL]), 2)
+        // Average call duration
+        CASE 
+            WHEN size([d IN duraciones_llamadas WHERE d IS NOT NULL]) > 0
+            THEN round(reduce(sum = 0.0, d IN duraciones_llamadas | sum + d) / size([d IN duraciones_llamadas WHERE d IS NOT NULL]), 2)
         ELSE 0.0
-      END as duracion_promedio_llamadas,
+        END as duracion_promedio_llamadas,
       
-      // Sentiment counts
-      size([s IN sentimientos_validos WHERE s = 'positivo']) as sentimiento_positivo,
-      size([s IN sentimientos_validos WHERE s = 'neutral']) as sentimiento_neutral,  
-      size([s IN sentimientos_validos WHERE s = 'negativo']) as sentimiento_negativo
+        // Sentiment counts
+        size([s IN sentimientos_validos WHERE s = 'positivo']) as sentimiento_positivo,
+        size([s IN sentimientos_validos WHERE s = 'neutral']) as sentimiento_neutral,  
+        size([s IN sentimientos_validos WHERE s = 'negativo']) as sentimiento_negativo
     
-    ORDER BY a.nombre
-    LIMIT $limite
+        ORDER BY a.nombre
+        LIMIT $limite
   `;
 
         try {
@@ -144,7 +99,6 @@ export class AgenteServices {
                     departamento: record.get("departamento"),
                     created_at: record.get("created_at"),
                     updated_at: record.get("updated_at"),
-
                     // Convert Neo4j integers to JavaScript numbers
                     total_interacciones: record.get("total_interacciones").toNumber(),
                     promesas_totales: record.get("promesas_totales").toNumber(),
@@ -201,14 +155,11 @@ export class AgenteServices {
         const data = await this.neo4jClient.runQuery(query, { agenteId });
         const record = data[0];
 
-        // Validamos si se encontró algún registro para el agente
         if (!record || !record.get("id")) {
             return null;
         }
 
-        // Se agrega el operador de encadenamiento opcional (?) y el operador de
-        // fusión de nulos (??) para manejar de forma segura los valores nulos que
-        // pueden retornar las agregaciones como sum() y avg() cuando no hay datos.
+      
         const totalInteracciones = record.get("total_interacciones")?.toNumber() ?? 0;
         const promesasGeneradas = record.get("promesas_generadas")?.toNumber() ?? 0;
         const promesasCumplidas = record.get("promesas_cumplidas")?.toNumber() ?? 0;
