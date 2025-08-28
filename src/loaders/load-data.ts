@@ -293,7 +293,7 @@ export class DataLoader {
                             CREATE (pp:PromesaDePago {
                                 id: $id,
                                 monto: $montoPrometido,
-                                fecha_promesa: date($fechaPromesa),
+                                fecha_promesa: date($fechaPromesa)
                             })
                             CREATE (i)-[:GENERO_PROMESA]->(pp)
                         `, {
