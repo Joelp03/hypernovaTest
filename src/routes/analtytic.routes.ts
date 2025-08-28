@@ -44,4 +44,23 @@ router.get('/mejores-horarios', async (req: Request, res: Response) => {
     }
 });
 
+// GET /analytics/graph 
+router.get('/graph', async (req: Request, res: Response) => {
+    try {
+        const analytics = await analyticServices.getAnalyticGraph()
+        res.json({
+            success: true,
+            data: analytics,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Error obteniendo graph:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Error interno del servidor',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
 export { router as analyticRoutes };

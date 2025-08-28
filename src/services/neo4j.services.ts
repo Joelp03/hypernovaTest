@@ -1,4 +1,6 @@
 import neo4j, { Driver, Session, Record, int } from "neo4j-driver";
+import dotenv from "dotenv";
+dotenv.config();
 
 export class Neo4jService {
   private driver: Driver;
@@ -23,10 +25,10 @@ export class Neo4jService {
     const session = this.driver.session();
     try {
       await session.run('RETURN 1');
-      console.log('✅ Neo4j conectado exitosamente');
+      console.log('✅ Connected to Neo4j successfully');
       return true;
     } catch (error) {
-      console.error('❌ Error conectando a Neo4j:', error);
+      console.error('❌ Error connect to Neo4j:', error);
       return false;
     } finally {
       await session.close();

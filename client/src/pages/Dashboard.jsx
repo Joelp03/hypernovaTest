@@ -2,35 +2,57 @@ import React, { useEffect, useState } from 'react';
 import KPICard from '../components/Dashboard/KPICard';
 import PieChart from '../components/Dashboard/PieChart';
 import LineChart from '../components/Dashboard/LineChart';
-import { fetchClients, fetchHoursEffectiveness, fetchPromisesIncomplete } from '../services/api';
 import { processKPIs } from '../services/processData';
+import BarChart from '../components/Dashboard/BarChart';
+import {  fetchAgentsDetails, fetchClients, fetchHoursEffectiveness, fetchPromisesIncomplete } from '../services/api';
 
 const Dashboard = () => {
-  const [promisesIncomplete, setPromisesIncomplete] = useState([])
-  const [clients, setClients] = useState([])
-  const [hoursEffectiveness, setHoursEffectiveness] = useState([])
-  const [loading, setLoading] = useState(false)
+    const [data, setData] = useState({
+    promisesIncomplete: [],
+    clients: [],
+    hoursEffectiveness: [],
+    agents: [],
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchData();
-  }, [])
-  
+  }, []);
+
   const fetchData = async () => {
     setLoading(true);
-    const response = await fetchPromisesIncomplete();
-    const clients = await fetchClients()
-    const hoursEffectiveness = await fetchHoursEffectiveness();
-    setPromisesIncomplete(response.data);
-    setClients(clients.data);
-    setHoursEffectiveness(hoursEffectiveness.data);
-    setLoading(false);
+    setError(null);
+
+    try {
+      const [ promisesResponse,  clientsResponse,  hoursEffectivenessResponse, agentsResponse] = await Promise.all([
+        fetchPromisesIncomplete(),
+        fetchClients(),
+        fetchHoursEffectiveness(),
+        fetchAgentsDetails(),
+      ]);
+
+      setData({
+        promisesIncomplete: promisesResponse.data,
+        clients: clientsResponse.data,
+        hoursEffectiveness: hoursEffectivenessResponse.data,
+        agents: agentsResponse.data,
+      });
+
+    } catch (err) {
+      setError("Failed to fetch data. Please try again later.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div>Cargando datos...</div>;
   }
 
-  
-
-
-  if(loading && !promisesIncomplete.length) {
-    return <div>Cargando...</div>;
+  if (error) {
+    return <div>Error: {error}</div>;
   }
 
 
@@ -45,7 +67,7 @@ const Dashboard = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {processKPIs(promisesIncomplete).map((kpi, index) => (
+        {processKPIs(data.promisesIncomplete).map((kpi, index) => (
           <KPICard
             key={index}
             label={kpi.label}
@@ -58,9 +80,9 @@ const Dashboard = () => {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <PieChart data={clients} />
+        <PieChart data={data.clients} />
         <div className="lg:col-span-1">
-          <LineChart data={hoursEffectiveness} title="Eficiencia Horaria" />
+          <LineChart data={data.hoursEffectiveness} title="Eficiencia Horaria" />
         </div>
       </div>
 
@@ -68,27 +90,7 @@ const Dashboard = () => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Actividad Reciente</h3>
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
-            <div>
-              <p className="text-sm font-medium text-gray-900">Pago recibido</p>
-              <p className="text-xs text-gray-600">Ana García - €1,000</p>
-            </div>
-            <span className="text-xs text-gray-500">Hace 2 horas</span>
-          </div>
-          <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-            <div>
-              <p className="text-sm font-medium text-gray-900">Nueva promesa de pago</p>
-              <p className="text-xs text-gray-600">Carlos López - €500 para el 30/01</p>
-            </div>
-            <span className="text-xs text-gray-500">Hace 4 horas</span>
-          </div>
-          <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg">
-            <div>
-              <p className="text-sm font-medium text-gray-900">Renegociación completada</p>
-              <p className="text-xs text-gray-600">María Rodríguez - Plan de 6 meses</p>
-            </div>
-            <span className="text-xs text-gray-500">Ayer</span>
-          </div>
+            <BarChart data={data.agents} />
         </div>
       </div>
     </div>

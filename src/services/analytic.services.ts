@@ -1,5 +1,5 @@
 import { neo4jService } from "./neo4j.services";
-import {  InteraccionEfectivaHorario, PromesaIncumplida } from "@/types";
+import { InteraccionEfectivaHorario, PromesaIncumplida } from "@/types";
 import { safeToNumber } from "@/utils";
 
 export class AnalyticServices {
@@ -61,5 +61,33 @@ export class AnalyticServices {
 
         return data;
     }
+
+    async getAnalyticGraph(): Promise<any[]> {
+        const query = `
+        MATCH (n)-[r]->(m)
+        WITH collect(distinct {
+            id: coalesce(n.id, toString(id(n))),
+            label: head(labels(n)),
+            nombre: n.nombre
+        }) +
+        collect(distinct {
+            id: coalesce(m.id, toString(id(m))),
+            label: head(labels(m)),
+            nombre: m.nombre
+        }) AS nodes,
+        collect({
+          source: coalesce(startNode(r).id, toString(id(startNode(r)))),
+          target: coalesce(endNode(r).id, toString(id(endNode(r)))),
+          type: type(r)
+        }) AS links
+        RETURN { nodes: nodes, links: links } AS graph
+        `;
+
+        const results = await this.neo4jClient.runQuery(query);
+        return results.map(record => {
+            return record.get("graph");
+        });
+    }
 }
+
 

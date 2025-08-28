@@ -41,3 +41,23 @@ export const fetchHoursEffectiveness = async () => {
       throw error;
     }
 }
+
+export const fetchAgentsDetails = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/agentes`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching agent details:', error);
+      throw error;
+    }
+}
+
+export const fetchGraphData = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/analytics/graph`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching graph data:', error);
+      throw error;
+    }
+}

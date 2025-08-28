@@ -21,6 +21,10 @@ const ClientView = () => {
     setLoading(false);
   }
 
+  if (loading) {
+    return <div>Cargando clientes...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between">

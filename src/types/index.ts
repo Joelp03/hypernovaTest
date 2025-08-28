@@ -72,9 +72,7 @@ export interface AgenteNode {
   nombre: string;
   departamento: string;
   total_interacciones: number;
-  promesas_cumplidas: number;
   promesas_totales: number;
-  tasa_efectividad: number;
   created_at: string;
   updated_at: string;
 }
