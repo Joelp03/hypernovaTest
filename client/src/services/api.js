@@ -31,3 +31,13 @@ export const fetchPromisesIncomplete = async () => {
       throw error;
     }
 }
+
+export const fetchHoursEffectiveness = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/analytics/mejores-horarios`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching best hours effectiveness:', error);
+      throw error;
+    }
+}

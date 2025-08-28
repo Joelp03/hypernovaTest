@@ -2,12 +2,13 @@ import React from 'react';
 import { Line } from 'react-chartjs-2';
 
 const LineChart = ({ data, title }) => {
+  const dataProcessed = processLineData(data);
   const chartData = {
-    labels: data.labels,
+    labels: dataProcessed.labels,
     datasets: [
       {
         label: title,
-        data: data.values,
+        data: dataProcessed.efectividadValues,
         fill: false,
         backgroundColor: '#36A2EB',
         borderColor: '#36A2EB',
@@ -21,6 +22,15 @@ const LineChart = ({ data, title }) => {
       <Line data={chartData} />
     </div>
   );
+};
+
+
+const processLineData = (data) => {
+  const labels = data.map(item => `Hora ${item.hora}`);
+
+  const efectividadValues = data.map(item => item.efectividad);
+
+  return { labels, efectividadValues };
 };
 
 export default LineChart;

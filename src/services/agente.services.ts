@@ -58,8 +58,6 @@ export class AgenteServices {
  
             OPTIONAL MATCH (i)-[:GENERO_PROMESA]->(pp:PromesaDePago)
             OPTIONAL MATCH (i)-[:GENERO_PAGO]->(p:Pago)
-            // Se realiza un segundo OPTIONAL MATCH para contar las promesas cumplidas.
-            // Esta ruta no interfiere con el cálculo del monto total.
             OPTIONAL MATCH (i)-[:GENERO_PROMESA]->(pp_cumplida:PromesaDePago)<-[:CUMPLE_PROMESA]-(:Pago)
 
             WITH a,
