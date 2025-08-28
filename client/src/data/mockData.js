@@ -80,7 +80,6 @@ export const debtTypes = [
 
 export const kpis = [
   { label: 'Tasa de Recuperación', value: '68%', change: 12, color: '#10B981' },
-  { label: 'Promesas Cumplidas', value: '142', change: 8, color: '#3B82F6' },
   { label: 'Deuda Activa', value: '€2.4M', change: -5, color: '#F59E0B' },
   { label: 'Deuda Recuperada', value: '€1.6M', change: 15, color: '#10B981' }
 ];

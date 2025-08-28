@@ -16,7 +16,7 @@ function App() {
         <div className="lg:pl-64">
           <main className="p-4 lg:p-8">
             <Routes>
-              <Route path="/" element={<Dashboard clientId={"cliente_038"} />} />
+              <Route path="/" element={<Dashboard />} />
               <Route path="/clients" element={<ClientView />} />
               <Route path="/graph" element={<GraphPage />} />
             </Routes>

@@ -1,5 +1,20 @@
 import React from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
+import { Line, Pie } from 'react-chartjs-2';
+
+// Registra los componentes de Chart.js que vas a usar
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  ArcElement,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+);
+
 
 const KPICard = ({ label, value, change, color }) => {
   const isPositive = change > 0;

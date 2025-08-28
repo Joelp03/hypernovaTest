@@ -1,6 +1,6 @@
 import React from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import { Line, Pie } from 'react-chartjs-2';
 import moment from 'moment';
 
 // Registra los componentes de Chart.js que vas a usar
@@ -11,7 +11,8 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Pie
 );
 
 const TimelineChart= ({ data }) => {

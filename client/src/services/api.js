@@ -11,7 +11,6 @@ export const fetchClientTimeline = async (clientId) => {
   }
 };
 
-
 export const fetchClients = async () => {
    try {
      const response = await axios.get(`${BASE_URL}/clientes`);
@@ -20,4 +19,15 @@ export const fetchClients = async () => {
      console.error('Error fetching clients:', error);
      throw error;
    }
+}
+
+
+export const fetchPromisesIncomplete = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/analytics/promesas-incumplidas`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching incomplete promises:', error);
+      throw error;
+    }
 }
