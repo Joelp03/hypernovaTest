@@ -5,6 +5,7 @@ import { clientesRoutes } from './routes/client.routes';
 import { DataLoader } from './loaders/load-data';
 import { agentesRoutes } from './routes/agentes.routes';
 import { analyticRoutes } from './routes/analtytic.routes';
+import cors from 'cors'
 // import { agentesRoutes } from './routes/agentes.routes.js';
 // import { analyticsRoutes } from './routes/analytics.routes.js';
 
@@ -14,6 +15,7 @@ const PORT = process.env.PORT || 3000;
 
 // ===== MIDDLEWARE =====
 
+app.use(cors({ origin: '*' }))
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 

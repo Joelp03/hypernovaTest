@@ -5,7 +5,7 @@ import { BarChart3, User, Network, Menu } from 'lucide-react';
 const Sidebar = ({ isOpen, onToggle }) => {
   const navItems = [
     { path: '/', icon: BarChart3, label: 'Dashboard' },
-    { path: '/client', icon: User, label: 'Clientes' },
+    { path: '/clients', icon: User, label: 'Clientes' },
     { path: '/graph', icon: Network, label: 'Relaciones' }
   ];
 

@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Layout/Sidebar';
 import Dashboard from './pages/Dashboard';
-import ClientView from './pages/ClientView';
 import GraphPage from './pages/GraphPage';
-// import GraphPage from './pages/GraphPage';
+import ClientView from './pages/ClientView';
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -17,8 +16,8 @@ function App() {
         <div className="lg:pl-64">
           <main className="p-4 lg:p-8">
             <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/client" element={<ClientView/>} />
+              <Route path="/" element={<Dashboard clientId={"cliente_038"} />} />
+              <Route path="/clients" element={<ClientView />} />
               <Route path="/graph" element={<GraphPage />} />
             </Routes>
           </main>

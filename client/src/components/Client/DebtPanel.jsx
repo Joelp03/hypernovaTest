@@ -1,57 +1,67 @@
 import React from 'react';
+import { DollarSign, Tag, Calendar, BarChart } from 'lucide-react';
 
-const DebtPanel = ({ client }) => {
-  const paymentProgress = (client.paidAmount / client.totalDebt) * 100;
+const DebtPanel = ({ deudaActual, montoPrometido }) => {
+  console.log("DebtPanel received deudaActual:", deudaActual);
+  if (!deudaActual) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+        <p className="text-sm text-gray-500">No hay datos de deuda disponibles.</p>
+      </div>
+    );
+  }
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pendiente':
+        return 'bg-red-50 text-red-600';
+      case 'activa':
+        return 'bg-blue-50 text-blue-600';
+      case 'pagada':
+        return 'bg-green-50 text-green-600';
+      default:
+        return 'bg-gray-50 text-gray-600';
+    }
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Estado de la Deuda</h3>
       
       <div className="space-y-4">
-        <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-          <span className="text-sm font-medium text-gray-600">Total de la Deuda</span>
-          <span className="text-lg font-bold text-gray-900">€{client.totalDebt.toLocaleString()}</span>
-        </div>
-        
-        <div className="flex justify-between items-center p-4 bg-green-50 rounded-lg">
-          <span className="text-sm font-medium text-gray-600">Cantidad Pagada</span>
-          <span className="text-lg font-bold text-green-600">€{client.paidAmount.toLocaleString()}</span>
-        </div>
-        
-        <div className="flex justify-between items-center p-4 bg-red-50 rounded-lg">
-          <span className="text-sm font-medium text-gray-600">Cantidad Pendiente</span>
-          <span className="text-lg font-bold text-red-600">€{client.pendingAmount.toLocaleString()}</span>
-        </div>
-        
-        <div className="mt-6">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-600">Progreso del Pago</span>
-            <span className="text-sm text-gray-500">{Math.round(paymentProgress)}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div 
-              className="bg-green-500 h-3 rounded-full transition-all duration-300"
-              style={{ width: `${paymentProgress}%` }}
-            ></div>
+        {/* Tipo de deuda */}
+        <div className="flex items-center p-4 bg-gray-50 rounded-lg">
+          <Tag className="w-5 h-5 mr-3 text-gray-600" />
+          <div className="flex-1">
+            <span className="text-sm font-medium text-gray-600">Tipo de Deuda</span>
+            <p className="text-lg font-bold text-gray-900 capitalize">{deudaActual.tipo_deuda.replace(/_/g, ' ')}</p>
           </div>
         </div>
         
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Predicción de Comportamiento</h4>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Probabilidad de pago (30 días)</span>
-            <div className="flex items-center">
-              <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                <div 
-                  className={`h-2 rounded-full ${
-                    client.paymentProbability >= 70 ? 'bg-green-500' :
-                    client.paymentProbability >= 40 ? 'bg-yellow-500' : 'bg-red-500'
-                  }`}
-                  style={{ width: `${client.paymentProbability}%` }}
-                ></div>
-              </div>
-              <span className="text-sm font-medium text-gray-900">{client.paymentProbability}%</span>
-            </div>
+        {/* Monto actual */}
+        <div className="flex items-center p-4 bg-gray-50 rounded-lg">
+          <DollarSign className="w-5 h-5 mr-3 text-gray-600" />
+          <div className="flex-1">
+            <span className="text-sm font-medium text-gray-600">Monto Actual</span>
+            <p className="text-lg font-bold text-gray-900">${deudaActual.monto_actual.toLocaleString()}</p>
+          </div>
+        </div>
+        
+        {/* Monto original */}
+        <div className="flex items-center p-4 bg-gray-50 rounded-lg">
+          <BarChart className="w-5 h-5 mr-3 text-gray-600" />
+          <div className="flex-1">
+            <span className="text-sm font-medium text-gray-600">Monto Prometido</span>
+            <p className="text-lg font-bold text-gray-900">${montoPrometido.toLocaleString()}</p>
+          </div>
+        </div>
+        
+        {/* Estado */}
+        <div className={`flex items-center p-4 rounded-lg ${getStatusColor(deudaActual.estado)}`}>
+          <Calendar className="w-5 h-5 mr-3" />
+          <div className="flex-1">
+            <span className="text-sm font-medium text-gray-600">Estado</span>
+            <p className="text-lg font-bold capitalize">{deudaActual.estado || 'N/A'}</p>
           </div>
         </div>
       </div>
