@@ -107,7 +107,6 @@ export class AgenteServices {
 
                 };
             });
-            console.log("Agentes obtenidos:", agentes);
 
             return agentes;
 

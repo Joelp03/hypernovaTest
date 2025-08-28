@@ -117,7 +117,6 @@ export class ClientServices {
 
     const record = records[0];
     const fecha_ultimo_contacto = record.get('fecha_ultimo_contacto')
-    console.log("wiippp", fecha_ultimo_contacto)
     return {
       id: record.get('id'),
       nombre: record.get('nombre'),
