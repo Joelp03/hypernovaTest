@@ -20,7 +20,7 @@ A full-stack application for analyzing customer interaction patterns using Neo4j
 ### 1. Clone and Setup Environment
 
 ```bash
-git clone <repository-url>
+git clone git@github.com:Joelp03/hypernovatest.git
 cd hypernovatest
 cp .env.example .env  # Configure your environment variables
 ```
@@ -106,6 +106,7 @@ GRAPHITI_TIMEOUT=30000
 - `GET /api/agentes/:agenteId/efectividad` - Get agent details  
 - `GET /api/analytics/promesas-incumplidas` - Get promesas incumplidas 
 - `GET /api/analytics/mejores-horarios` - Get mejores horarios
+- `GET /api/analytics/graph` - Get graph data
 
 ## Project Structure
 
@@ -132,3 +133,8 @@ GRAPHITI_TIMEOUT=30000
 - **Frontend**: React, Vite, TailwindCSS, Chart.js
 - **Database**: Neo4j Community Edition
 - **Visualization**: React Force Graph, Chart.js
+
+
+### Check informe.md for more details on design decisions and evaluation.
+
+####  click here [Informe completo](informe.md) to read the full report.
